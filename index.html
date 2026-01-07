@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Elite Health & Fitness Audit | Adults 40+</title>
+  <meta name="description" content="Specialist health assessment based on NHS Health Check, MyDiagnostics HRA, and PAR-Q Standards">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .active\:scale-98:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel">
+    // ============================================================
+    // ⚠️ IMPORTANT: Replace this URL with your Google Apps Script URL
+    // ============================================================
+    const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+    // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
+    // ============================================================
+
+    const { useState, useEffect } = React;
+
+    // Quiz Data - All 40 questions
+    const quizData = {
+      phases: [
+        {
+          id: 1,
+          title: "Metabolic & Biomarker Screening",
+          shortTitle: "Phase 1",
+          description: "15 questions on metabolic health markers",
+          icon: "🩺",
+          questions: [
+            { id: 1, question: "What is your current age?", options: [{ text: "40–45", points: 0 }, { text: "46–55", points: 2 }, { text: "56–64", points: 4 }, { text: "65+", points: 6 }] },
+            { id: 2, question: "What is your smoking status?", options: [{ text: "Never smoked", points: 0 }, { text: "Ex-smoker", points: 2 }, { text: "Occasional/Social smoker", points: 5 }, { text: "Current daily smoker", points: 8 }] },
+            { id: 3, question: "Do you know your Systolic Blood Pressure (top number)?", options: [{ text: "Below 120", points: 0 }, { text: "120–139", points: 3 }, { text: "140+ or on medication", points: 6 }, { text: "I haven't checked in over 1 year", points: 4 }] },
+            { id: 4, question: "Body Mass Index (BMI) Range:", options: [{ text: "Under 25 (Healthy)", points: 0 }, { text: "25–29.9 (Overweight)", points: 3 }, { text: "30+ (Obese)", points: 6 }] },
+            { id: 5, question: "Family History: Heart disease in immediate family before age 60?", options: [{ text: "No", points: 0 }, { text: "Yes, one member", points: 4 }, { text: "Yes, multiple members", points: 7 }] },
+            { id: 6, question: "Diabetes Status: Have you been told you are 'Prediabetic'?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 8 }] },
+            { id: 7, question: "Alcohol Intake: Units consumed weekly?", options: [{ text: "0–14 units", points: 0 }, { text: "15–21 units", points: 3 }, { text: "22+ units", points: 6 }] },
+            { id: 8, question: "Daily fruit and vegetable portions?", options: [{ text: "5 or more", points: 0 }, { text: "3–4", points: 2 }, { text: "0–2", points: 4 }] },
+            { id: 9, question: "Do you eat processed meats 3+ times a week?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 3 }] },
+            { id: 10, question: "Full cholesterol test in the last 2 years?", options: [{ text: "Yes, results were normal", points: 0 }, { text: "Yes, results were high", points: 5 }, { text: "No", points: 3 }] },
+            { id: 11, question: "Do you experience frequent unexplained fatigue?", options: [{ text: "Rarely", points: 0 }, { text: "Sometimes", points: 2 }, { text: "Daily", points: 5 }] },
+            { id: 12, question: "Waist Circumference: Is your waist more than half your height?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 4 }] },
+            { id: 13, question: "Do you use salt daily or eat high-sodium snacks?", options: [{ text: "Rarely", points: 0 }, { text: "Frequently", points: 3 }] },
+            { id: 14, question: "How often do you eat out or order 'fast food' per week?", options: [{ text: "0–1 times", points: 0 }, { text: "2–4 times", points: 3 }, { text: "5+ times", points: 5 }] },
+            { id: 15, question: "Do you suffer from persistent snoring or Sleep Apnea?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 4 }] }
+          ]
+        },
+        {
+          id: 2,
+          title: "Physical Readiness (PAR-Q)",
+          shortTitle: "Phase 2",
+          description: "10 questions on exercise safety",
+          icon: "💪",
+          questions: [
+            { id: 16, question: "Has a doctor ever said you have a heart condition?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 10 }] },
+            { id: 17, question: "Chest pain during physical activity?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 10 }] },
+            { id: 18, question: "Chest pain when NOT active in the past month?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 10 }] },
+            { id: 19, question: "Do you lose balance due to dizziness?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 5 }] },
+            { id: 20, question: "Bone or joint problems made worse by exercise?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 5 }] },
+            { id: 21, question: "Currently on meds for Blood Pressure or Heart?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 8 }] },
+            { id: 22, question: "Shortness of breath climbing one flight of stairs?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 5 }] },
+            { id: 23, question: "Any other reason you should not be active?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 5 }] },
+            { id: 24, question: "10-minute warm-up before every workout?", options: [{ text: "Always", points: 0 }, { text: "Sometimes", points: 3 }, { text: "Never", points: 5 }] },
+            { id: 25, question: "Hydrate 150ml every 15 mins during exercise?", options: [{ text: "Yes", points: 0 }, { text: "No", points: 2 }] }
+          ]
+        },
+        {
+          id: 3,
+          title: "Lifestyle & Performance",
+          shortTitle: "Phase 3",
+          description: "15 questions on wellness",
+          icon: "🧘",
+          questions: [
+            { id: 26, question: "Hours of quality sleep nightly?", options: [{ text: "7–9 hours", points: 0 }, { text: "5–6 hours", points: 3 }, { text: "Less than 5", points: 6 }] },
+            { id: 27, question: "Daily stress levels?", options: [{ text: "Low/Managed", points: 0 }, { text: "Moderate", points: 3 }, { text: "High/Constant", points: 7 }] },
+            { id: 28, question: "Weekly minutes of Brisk Walking?", options: [{ text: "150+ mins", points: 0 }, { text: "75–149 mins", points: 3 }, { text: "Less than 75 mins", points: 6 }] },
+            { id: 29, question: "Strength training 2x per week?", options: [{ text: "Yes", points: 0 }, { text: "No", points: 5 }] },
+            { id: 30, question: "Hours spent sitting per day?", options: [{ text: "Less than 4 hours", points: 0 }, { text: "4–8 hours", points: 3 }, { text: "8+ hours", points: 6 }] },
+            { id: 31, question: "Mindfulness or meditation practice?", options: [{ text: "Daily", points: 0 }, { text: "Weekly/Monthly", points: 2 }, { text: "Never", points: 4 }] },
+            { id: 32, question: "Do you feel socially isolated or lonely?", options: [{ text: "Rarely", points: 0 }, { text: "Sometimes", points: 3 }, { text: "Often", points: 5 }] },
+            { id: 33, question: "Screen use within 1 hour of bedtime?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 3 }] },
+            { id: 34, question: "Daily caffeine intake (cups)?", options: [{ text: "0–2 cups", points: 0 }, { text: "3–5 cups", points: 2 }, { text: "6+ cups", points: 4 }] },
+            { id: 35, question: "Do you have a dedicated hobby?", options: [{ text: "Yes", points: 0 }, { text: "No", points: 3 }] },
+            { id: 36, question: "Do you track steps daily?", options: [{ text: "Yes, target 10k+", points: 0 }, { text: "Yes, target 5k–10k", points: 2 }, { text: "No", points: 4 }] },
+            { id: 37, question: "Do you smoke or use Vapes?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 6 }] },
+            { id: 38, question: "Life Satisfaction rating?", options: [{ text: "High", points: 0 }, { text: "Moderate", points: 3 }, { text: "Low", points: 5 }] },
+            { id: 39, question: "Frequent headaches or migraines?", options: [{ text: "Rarely", points: 0 }, { text: "Monthly", points: 2 }, { text: "Weekly", points: 4 }] },
+            { id: 40, question: "Ages 65+: Performing balance exercises (Tai Chi, etc)?", options: [{ text: "Yes or N/A (under 65)", points: 0 }, { text: "No (65+ without balance exercises)", points: 4 }] }
+          ]
+        }
+      ]
+    };
+
+    const scoringScale = [
+      { range: "0–15", level: "Low Risk", color: "#10b981", emoji: "🟢", desc: "Excellent baseline. Focus on Performance Optimization." },
+      { range: "16–35", level: "Moderate Risk", color: "#f59e0b", emoji: "🟡", desc: "Requires lifestyle intervention to prevent chronic onset." },
+      { range: "36–55", level: "High Risk", color: "#ef4444", emoji: "🔴", desc: "Immediate GP consultation for full NHS-style check." },
+      { range: "56+", level: "Critical Risk", color: "#991b1b", emoji: "🚨", desc: "Potential undiagnosed condition. Medical clearance required." }
+    ];
+
+    const getRiskCategory = (score) => {
+      if (score <= 15) return { level: "LOW RISK", color: "#10b981", bgColor: "#d1fae5", emoji: "🟢", title: "Optimal Health Status", interpretation: "Excellent baseline. Focus on Performance Optimization.", clinicalAction: "You can confidently pursue elite fitness goals.", fitnessGuidance: "Ready for 'Elite' training—Partner P.N.F. stretches and 100% intensity workouts.", cure: { title: "Longevity Maintenance Protocol", items: ["HIIT once weekly to maintain VO2 Max", "Partner P.N.F. stretches for joint health", "Continue current nutrition and sleep habits", "Annual health screening"] } };
+      if (score <= 35) return { level: "MODERATE RISK", color: "#f59e0b", bgColor: "#fef3c7", emoji: "🟡", title: "Lifestyle Intervention Required", interpretation: "You're in the 'Yellow Zone.' Lifestyle changes needed.", clinicalAction: "Start slowly and build gradually. Stop if you feel discomfort.", fitnessGuidance: "Focus on 'Easy Stretches' and Zone 2 cardio (brisk walking).", cure: { title: "Metabolic Reset Protocol", items: ["Reduce refined sugars and processed foods", "Increase fiber intake to 30g/day", "150 minutes moderate activity weekly", "2 days strength training", "GP consultation within 3 months"] } };
+      if (score <= 55) return { level: "HIGH RISK", color: "#ef4444", bgColor: "#fee2e2", emoji: "🔴", title: "Medical Consultation Required", interpretation: "You're in the 'Red Zone.' Immediate GP consultation recommended.", clinicalAction: "Do NOT proceed with vigorous exercise. See GP for ECG.", fitnessGuidance: "Zone 1 activities ONLY—leisurely walking.", cure: { title: "Medical Clearance Protocol", items: ["STOP all vigorous physical activity", "Schedule GP appointment within 2 weeks", "Request ECG and Blood Panel", "Only Zone 1 activities", "Medical clearance before progression"] } };
+      return { level: "CRITICAL RISK", color: "#991b1b", bgColor: "#fecaca", emoji: "🚨", title: "Urgent Medical Attention", interpretation: "CRITICAL: Immediate medical clearance required.", clinicalAction: "STOP all physical activity. Contact healthcare provider TODAY.", fitnessGuidance: "NO exercise until full medical clearance.", cure: { title: "Urgent Medical Evaluation", items: ["Contact healthcare provider IMMEDIATELY", "Complete medical evaluation required", "Share all health concerns with doctor", "Follow-up appointments mandatory"] } };
+    };
+
+    const submitToGoogleSheets = async (data) => {
+      if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+        console.log('Google Sheets not configured. Data:', data);
+        return { success: true, offline: true };
+      }
+      try {
+        await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        return { success: true };
+      } catch (error) {
+        console.error('Submit error:', error);
+        return { success: false };
+      }
+    };
+
+    const WelcomeScreen = ({ onStart }) => {
+      const [userInfo, setUserInfo] = useState({ name: '', email: '', phone: '' });
+      const [agreed, setAgreed] = useState(false);
+      const [errors, setErrors] = useState({});
+
+      const validate = () => {
+        const newErrors = {};
+        if (!userInfo.name.trim()) newErrors.name = 'Required';
+        if (!userInfo.email.trim()) newErrors.email = 'Required';
+        else if (!/\S+@\S+\.\S+/.test(userInfo.email)) newErrors.email = 'Invalid email';
+        if (!agreed) newErrors.agreed = 'Please agree';
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+      };
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-3">
+          <div className="w-full max-w-lg">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-5 shadow-2xl border border-white/20">
+              <div className="text-center mb-5">
+                <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl mb-3">
+                  <span className="text-2xl">🏥</span>
+                </div>
+                <h1 className="text-xl font-bold text-white mb-1">Elite Health & Fitness Audit</h1>
+                <p className="text-blue-200 text-sm">Adults 40+ | 40 Questions | 5-7 mins</p>
+              </div>
+              
+              <div className="space-y-3 mb-4">
+                <input type="text" placeholder="Your Name *" value={userInfo.name} onChange={(e) => setUserInfo({...userInfo, name: e.target.value})} className={`w-full px-4 py-3 rounded-lg bg-white/10 border text-white placeholder-blue-300 text-sm ${errors.name ? 'border-red-400' : 'border-white/20'}`} />
+                <input type="email" placeholder="Email *" value={userInfo.email} onChange={(e) => setUserInfo({...userInfo, email: e.target.value})} className={`w-full px-4 py-3 rounded-lg bg-white/10 border text-white placeholder-blue-300 text-sm ${errors.email ? 'border-red-400' : 'border-white/20'}`} />
+                <input type="tel" placeholder="Phone (optional)" value={userInfo.phone} onChange={(e) => setUserInfo({...userInfo, phone: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-blue-300 text-sm" />
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" />
+                  <span className="text-amber-200 text-xs">⚠️ This is for educational purposes only. A high score means consult a physician first.</span>
+                </label>
+              </div>
+              
+              <button onClick={() => validate() && onStart(userInfo)} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3 rounded-xl">
+                Begin Assessment →
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const QuizScreen = ({ userInfo, onComplete }) => {
+      const [phaseIdx, setPhaseIdx] = useState(0);
+      const [qIdx, setQIdx] = useState(0);
+      const [answers, setAnswers] = useState({});
+      const [score, setScore] = useState(0);
+      const [submitting, setSubmitting] = useState(false);
+      
+      const allQuestions = quizData.phases.flatMap(p => p.questions);
+      const total = allQuestions.length;
+      let current = 0;
+      for (let i = 0; i < phaseIdx; i++) current += quizData.phases[i].questions.length;
+      current += qIdx + 1;
+      
+      const phase = quizData.phases[phaseIdx];
+      const q = phase.questions[qIdx];
+      
+      const handleSelect = (qId, optIdx) => {
+        const question = allQuestions.find(x => x.id === qId);
+        const prev = answers[qId];
+        const prevPts = prev !== undefined ? question.options[prev].points : 0;
+        const newPts = question.options[optIdx].points;
+        setAnswers(a => ({ ...a, [qId]: optIdx }));
+        setScore(s => s - prevPts + newPts);
+      };
+      
+      const handleNext = async () => {
+        if (qIdx < phase.questions.length - 1) setQIdx(i => i + 1);
+        else if (phaseIdx < quizData.phases.length - 1) { setPhaseIdx(i => i + 1); setQIdx(0); }
+        else {
+          setSubmitting(true);
+          const phaseScores = quizData.phases.map(p => p.questions.reduce((t, x) => t + (answers[x.id] !== undefined ? x.options[answers[x.id]].points : 0), 0));
+          const risk = getRiskCategory(score);
+          const ageText = answers[1] !== undefined ? quizData.phases[0].questions[0].options[answers[1]].text : 'Unknown';
+          const detailedAnswers = {};
+          allQuestions.forEach(x => { if (answers[x.id] !== undefined) detailedAnswers['Q' + x.id] = x.options[answers[x.id]].text; });
+          
+          await submitToGoogleSheets({
+            timestamp: new Date().toISOString(),
+            id: Date.now().toString(36).toUpperCase(),
+            name: userInfo.name,
+            email: userInfo.email,
+            phone: userInfo.phone || 'N/A',
+            age: ageText,
+            totalScore: score,
+            riskLevel: risk.level,
+            phase1Score: phaseScores[0],
+            phase2Score: phaseScores[1],
+            phase3Score: phaseScores[2],
+            allAnswers: JSON.stringify(detailedAnswers)
+          });
+          
+          setSubmitting(false);
+          onComplete(score, answers);
+        }
+      };
+      
+      const handleBack = () => {
+        if (qIdx > 0) setQIdx(i => i - 1);
+        else if (phaseIdx > 0) { setPhaseIdx(i => i - 1); setQIdx(quizData.phases[phaseIdx - 1].questions.length - 1); }
+      };
+      
+      if (submitting) return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+          <div className="text-center"><div className="animate-spin w-10 h-10 border-4 border-white border-t-transparent rounded-full mx-auto mb-3"></div><p className="text-white text-sm">Saving results...</p></div>
+        </div>
+      );
+      
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-4 px-3">
+          <div className="max-w-lg mx-auto">
+            <div className="bg-white/10 backdrop-blur rounded-xl p-3 mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-white text-xs truncate">{phase.icon} {phase.shortTitle}</span>
+                <span className="text-blue-200 text-xs">{current}/{total} • {score} pts</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2">
+                <div className="bg-gradient-to-r from-emerald-400 to-cyan-400 h-2 rounded-full transition-all" style={{ width: `${(current / total) * 100}%` }} />
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-xl p-4 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">{phase.icon}</span>
+                <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-1 rounded-full">Q{current}/{total}</span>
+              </div>
+              <h2 className="text-base font-bold text-gray-800 mb-4">{q.question}</h2>
+              <div className="space-y-2">
+                {q.options.map((opt, i) => (
+                  <button key={i} onClick={() => handleSelect(q.id, i)} className={`w-full text-left p-3 rounded-lg border-2 ${answers[q.id] === i ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${answers[q.id] === i ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
+                        {answers[q.id] === i && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
+                      </div>
+                      <span className={`text-sm ${answers[q.id] === i ? 'text-blue-800 font-medium' : 'text-gray-700'}`}>{opt.text}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button onClick={handleBack} disabled={phaseIdx === 0 && qIdx === 0} className={`flex-1 py-3 rounded-xl font-semibold text-sm ${phaseIdx === 0 && qIdx === 0 ? 'bg-white/5 text-gray-500' : 'bg-white/10 text-white'}`}>← Back</button>
+              <button onClick={handleNext} disabled={answers[q.id] === undefined} className={`flex-1 py-3 rounded-xl font-semibold text-sm ${answers[q.id] !== undefined ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white' : 'bg-white/5 text-gray-500'}`}>
+                {phaseIdx === quizData.phases.length - 1 && qIdx === phase.questions.length - 1 ? 'Get Results' : 'Next →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const ResultsScreen = ({ score, answers, userInfo, onRestart }) => {
+      const risk = getRiskCategory(score);
+      const phaseScores = quizData.phases.map(p => ({ ...p, score: p.questions.reduce((t, q) => t + (answers[q.id] !== undefined ? q.options[answers[q.id]].points : 0), 0), max: p.questions.reduce((t, q) => t + Math.max(...q.options.map(o => o.points)), 0) }));
+      const maxScore = phaseScores.reduce((t, p) => t + p.max, 0);
+      
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-4 px-3">
+          <div className="max-w-lg mx-auto">
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden mb-4">
+              <div className="p-5 text-center" style={{ backgroundColor: risk.bgColor }}>
+                <div className="text-4xl mb-2">{risk.emoji}</div>
+                <div className="text-3xl font-bold" style={{ color: risk.color }}>{score}</div>
+                <div className="text-gray-600 text-sm mb-2">out of {maxScore} points</div>
+                <div className="inline-block px-4 py-1 rounded-full font-bold text-white text-sm" style={{ backgroundColor: risk.color }}>{risk.level}</div>
+                <h2 className="text-base font-bold text-gray-800 mt-2">{risk.title}</h2>
+                <p className="text-gray-500 text-xs mt-1">{userInfo.name}</p>
+              </div>
+              
+              <div className="p-4">
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-gray-800 mb-2">🩺 Interpretation</h3>
+                  <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg">{risk.interpretation}</p>
+                </div>
+                
+                <div className="mb-4 p-3 rounded-xl border-2" style={{ borderColor: risk.color, backgroundColor: risk.bgColor + '50' }}>
+                  <h3 className="text-sm font-bold mb-1" style={{ color: risk.color }}>⚡ Action Required</h3>
+                  <p className="text-gray-700 text-sm">{risk.clinicalAction}</p>
+                </div>
+                
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-gray-800 mb-2">💪 Fitness Guidance</h3>
+                  <p className="text-gray-700 text-sm bg-blue-50 p-3 rounded-lg">{risk.fitnessGuidance}</p>
+                </div>
+                
+                <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <h3 className="text-sm font-bold text-emerald-800 mb-2">💊 {risk.cure.title}</h3>
+                  <ul className="space-y-1">
+                    {risk.cure.items.map((item, i) => <li key={i} className="flex items-start gap-2 text-emerald-900 text-xs"><span className="text-emerald-500">✓</span>{item}</li>)}
+                  </ul>
+                </div>
+                
+                <div className="mb-4">
+                  <h3 className="text-sm font-bold text-gray-800 mb-2">📊 Phase Scores</h3>
+                  {phaseScores.map(p => (
+                    <div key={p.id} className="bg-gray-50 rounded-lg p-2 mb-2">
+                      <div className="flex justify-between text-sm mb-1"><span>{p.icon} {p.shortTitle}</span><span className="font-bold">{p.score}/{p.max}</span></div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${(p.score / p.max) * 100}%` }} /></div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="border border-gray-200 rounded-lg overflow-hidden text-xs mb-4">
+                  {scoringScale.map((s, i) => {
+                    const active = (i === 0 && score <= 15) || (i === 1 && score > 15 && score <= 35) || (i === 2 && score > 35 && score <= 55) || (i === 3 && score > 55);
+                    return <div key={i} className={`p-2 ${active ? 'bg-blue-50 border-l-4 border-blue-500' : 'border-b border-gray-100'}`}><span>{s.emoji}</span> <strong style={{ color: s.color }}>{s.range}</strong> — {s.desc}</div>;
+                  })}
+                </div>
+              </div>
+            </div>
+            
+            <button onClick={onRestart} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3 rounded-xl">Take Again</button>
+            <p className="text-center text-blue-200 text-xs mt-3">Results saved. Thank you!</p>
+          </div>
+        </div>
+      );
+    };
+
+    function App() {
+      const [screen, setScreen] = useState('welcome');
+      const [userInfo, setUserInfo] = useState(null);
+      const [results, setResults] = useState(null);
+      
+      if (screen === 'welcome') return <WelcomeScreen onStart={(info) => { setUserInfo(info); setScreen('quiz'); }} />;
+      if (screen === 'quiz') return <QuizScreen userInfo={userInfo} onComplete={(score, answers) => { setResults({ score, answers }); setScreen('results'); }} />;
+      if (screen === 'results') return <ResultsScreen score={results.score} answers={results.answers} userInfo={userInfo} onRestart={() => { setUserInfo(null); setResults(null); setScreen('welcome'); }} />;
+      return null;
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
