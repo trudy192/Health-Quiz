@@ -12,6 +12,8 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .active\:scale-98:active { transform: scale(0.98); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 1s linear infinite; }
   </style>
 </head>
 <body>
@@ -19,10 +21,9 @@
   
   <script type="text/babel">
     // ============================================================
-    // ⚠️ IMPORTANT: Replace this URL with your Google Apps Script URL
+    // ⚠️ REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT URL
     // ============================================================
-    const GOOGLE_SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
-    // Example: 'https://script.google.com/macros/s/AKfycbx.../exec'
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyOpq73KElDJSh6RiCioBz-uZGSXqMjSNnE_D3Xp-sY_BbWb81L7OqgDdD4ltdU6PTWPQ/exec';
     // ============================================================
 
     const { useState, useEffect } = React;
@@ -31,11 +32,7 @@
     const quizData = {
       phases: [
         {
-          id: 1,
-          title: "Metabolic & Biomarker Screening",
-          shortTitle: "Phase 1",
-          description: "15 questions on metabolic health markers",
-          icon: "🩺",
+          id: 1, title: "Metabolic & Biomarker Screening", shortTitle: "Phase 1", icon: "🩺",
           questions: [
             { id: 1, question: "What is your current age?", options: [{ text: "40–45", points: 0 }, { text: "46–55", points: 2 }, { text: "56–64", points: 4 }, { text: "65+", points: 6 }] },
             { id: 2, question: "What is your smoking status?", options: [{ text: "Never smoked", points: 0 }, { text: "Ex-smoker", points: 2 }, { text: "Occasional/Social smoker", points: 5 }, { text: "Current daily smoker", points: 8 }] },
@@ -55,11 +52,7 @@
           ]
         },
         {
-          id: 2,
-          title: "Physical Readiness (PAR-Q)",
-          shortTitle: "Phase 2",
-          description: "10 questions on exercise safety",
-          icon: "💪",
+          id: 2, title: "Physical Readiness (PAR-Q)", shortTitle: "Phase 2", icon: "💪",
           questions: [
             { id: 16, question: "Has a doctor ever said you have a heart condition?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 10 }] },
             { id: 17, question: "Chest pain during physical activity?", options: [{ text: "No", points: 0 }, { text: "Yes", points: 10 }] },
@@ -74,11 +67,7 @@
           ]
         },
         {
-          id: 3,
-          title: "Lifestyle & Performance",
-          shortTitle: "Phase 3",
-          description: "15 questions on wellness",
-          icon: "🧘",
+          id: 3, title: "Lifestyle & Performance", shortTitle: "Phase 3", icon: "🧘",
           questions: [
             { id: 26, question: "Hours of quality sleep nightly?", options: [{ text: "7–9 hours", points: 0 }, { text: "5–6 hours", points: 3 }, { text: "Less than 5", points: 6 }] },
             { id: 27, question: "Daily stress levels?", options: [{ text: "Low/Managed", points: 0 }, { text: "Moderate", points: 3 }, { text: "High/Constant", points: 7 }] },
@@ -114,13 +103,37 @@
       return { level: "CRITICAL RISK", color: "#991b1b", bgColor: "#fecaca", emoji: "🚨", title: "Urgent Medical Attention", interpretation: "CRITICAL: Immediate medical clearance required.", clinicalAction: "STOP all physical activity. Contact healthcare provider TODAY.", fitnessGuidance: "NO exercise until full medical clearance.", cure: { title: "Urgent Medical Evaluation", items: ["Contact healthcare provider IMMEDIATELY", "Complete medical evaluation required", "Share all health concerns with doctor", "Follow-up appointments mandatory"] } };
     };
 
+    // Check if user already completed quiz
+    const hasCompletedQuiz = (email) => {
+      const completed = localStorage.getItem('quizCompleted');
+      if (completed) {
+        const data = JSON.parse(completed);
+        return data.includes(email.toLowerCase());
+      }
+      return false;
+    };
+
+    // Mark email as completed
+    const markCompleted = (email) => {
+      const completed = localStorage.getItem('quizCompleted');
+      const data = completed ? JSON.parse(completed) : [];
+      data.push(email.toLowerCase());
+      localStorage.setItem('quizCompleted', JSON.stringify(data));
+    };
+
+    // Submit to Google Sheets
     const submitToGoogleSheets = async (data) => {
       if (GOOGLE_SCRIPT_URL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
         console.log('Google Sheets not configured. Data:', data);
         return { success: true, offline: true };
       }
       try {
-        await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        await fetch(GOOGLE_SCRIPT_URL, { 
+          method: 'POST', 
+          mode: 'no-cors', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify(data) 
+        });
         return { success: true };
       } catch (error) {
         console.error('Submit error:', error);
@@ -128,10 +141,35 @@
       }
     };
 
-    const WelcomeScreen = ({ onStart }) => {
+    // Already Completed Screen
+    const AlreadyCompletedScreen = ({ email }) => (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-3">
+        <div className="w-full max-w-lg">
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20 text-center">
+            <div className="text-5xl mb-4">✅</div>
+            <h1 className="text-xl font-bold text-white mb-3">Already Completed</h1>
+            <p className="text-blue-200 mb-4">
+              The email <strong>{email}</strong> has already been used to complete this assessment.
+            </p>
+            <p className="text-blue-300 text-sm">
+              Each participant can only complete the quiz once to ensure data integrity.
+            </p>
+            <div className="mt-6 p-4 bg-white/5 rounded-lg">
+              <p className="text-blue-200 text-sm">
+                If you believe this is an error, please contact the quiz administrator.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
+    // Welcome Screen
+    const WelcomeScreen = ({ onStart, onAlreadyCompleted }) => {
       const [userInfo, setUserInfo] = useState({ name: '', email: '', phone: '' });
       const [agreed, setAgreed] = useState(false);
       const [errors, setErrors] = useState({});
+      const [checking, setChecking] = useState(false);
 
       const validate = () => {
         const newErrors = {};
@@ -141,6 +179,18 @@
         if (!agreed) newErrors.agreed = 'Please agree';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
+      };
+
+      const handleStart = () => {
+        if (validate()) {
+          setChecking(true);
+          // Check if already completed
+          if (hasCompletedQuiz(userInfo.email)) {
+            onAlreadyCompleted(userInfo.email);
+          } else {
+            onStart(userInfo);
+          }
+        }
       };
 
       return (
@@ -155,21 +205,34 @@
                 <p className="text-blue-200 text-sm">Adults 40+ | 40 Questions | 5-7 mins</p>
               </div>
               
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
+                <p className="text-blue-200 text-xs text-center">
+                  ⚡ <strong>One attempt per person</strong> — Please use your primary email
+                </p>
+              </div>
+              
               <div className="space-y-3 mb-4">
-                <input type="text" placeholder="Your Name *" value={userInfo.name} onChange={(e) => setUserInfo({...userInfo, name: e.target.value})} className={`w-full px-4 py-3 rounded-lg bg-white/10 border text-white placeholder-blue-300 text-sm ${errors.name ? 'border-red-400' : 'border-white/20'}`} />
-                <input type="email" placeholder="Email *" value={userInfo.email} onChange={(e) => setUserInfo({...userInfo, email: e.target.value})} className={`w-full px-4 py-3 rounded-lg bg-white/10 border text-white placeholder-blue-300 text-sm ${errors.email ? 'border-red-400' : 'border-white/20'}`} />
+                <div>
+                  <input type="text" placeholder="Your Full Name *" value={userInfo.name} onChange={(e) => setUserInfo({...userInfo, name: e.target.value})} className={`w-full px-4 py-3 rounded-lg bg-white/10 border text-white placeholder-blue-300 text-sm ${errors.name ? 'border-red-400' : 'border-white/20'}`} />
+                  {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+                </div>
+                <div>
+                  <input type="email" placeholder="Email Address *" value={userInfo.email} onChange={(e) => setUserInfo({...userInfo, email: e.target.value})} className={`w-full px-4 py-3 rounded-lg bg-white/10 border text-white placeholder-blue-300 text-sm ${errors.email ? 'border-red-400' : 'border-white/20'}`} />
+                  {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+                </div>
                 <input type="tel" placeholder="Phone (optional)" value={userInfo.phone} onChange={(e) => setUserInfo({...userInfo, phone: e.target.value})} className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-blue-300 text-sm" />
               </div>
 
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-4">
                 <label className="flex items-start gap-2 cursor-pointer">
                   <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-1" />
-                  <span className="text-amber-200 text-xs">⚠️ This is for educational purposes only. A high score means consult a physician first.</span>
+                  <span className="text-amber-200 text-xs">⚠️ This is for educational purposes only. A high score means consult a physician before increasing physical activity. I agree to proceed.</span>
                 </label>
+                {errors.agreed && <p className="text-red-400 text-xs mt-1">{errors.agreed}</p>}
               </div>
               
-              <button onClick={() => validate() && onStart(userInfo)} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3 rounded-xl">
-                Begin Assessment →
+              <button onClick={handleStart} disabled={checking} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3 rounded-xl disabled:opacity-50">
+                {checking ? 'Checking...' : 'Begin Assessment →'}
               </button>
             </div>
           </div>
@@ -177,6 +240,7 @@
       );
     };
 
+    // Quiz Screen
     const QuizScreen = ({ userInfo, onComplete }) => {
       const [phaseIdx, setPhaseIdx] = useState(0);
       const [qIdx, setQIdx] = useState(0);
@@ -228,6 +292,9 @@
             allAnswers: JSON.stringify(detailedAnswers)
           });
           
+          // Mark as completed
+          markCompleted(userInfo.email);
+          
           setSubmitting(false);
           onComplete(score, answers);
         }
@@ -240,7 +307,10 @@
       
       if (submitting) return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-          <div className="text-center"><div className="animate-spin w-10 h-10 border-4 border-white border-t-transparent rounded-full mx-auto mb-3"></div><p className="text-white text-sm">Saving results...</p></div>
+          <div className="text-center">
+            <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-white text-sm">Saving your results...</p>
+          </div>
         </div>
       );
       
@@ -265,7 +335,7 @@
               <h2 className="text-base font-bold text-gray-800 mb-4">{q.question}</h2>
               <div className="space-y-2">
                 {q.options.map((opt, i) => (
-                  <button key={i} onClick={() => handleSelect(q.id, i)} className={`w-full text-left p-3 rounded-lg border-2 ${answers[q.id] === i ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                  <button key={i} onClick={() => handleSelect(q.id, i)} className={`w-full text-left p-3 rounded-lg border-2 transition-all ${answers[q.id] === i ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
                     <div className="flex items-start gap-3">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${answers[q.id] === i ? 'border-blue-500 bg-blue-500' : 'border-gray-300'}`}>
                         {answers[q.id] === i && <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>}
@@ -288,7 +358,8 @@
       );
     };
 
-    const ResultsScreen = ({ score, answers, userInfo, onRestart }) => {
+    // Results Screen
+    const ResultsScreen = ({ score, answers, userInfo }) => {
       const risk = getRiskCategory(score);
       const phaseScores = quizData.phases.map(p => ({ ...p, score: p.questions.reduce((t, q) => t + (answers[q.id] !== undefined ? q.options[answers[q.id]].points : 0), 0), max: p.questions.reduce((t, q) => t + Math.max(...q.options.map(o => o.points)), 0) }));
       const maxScore = phaseScores.reduce((t, p) => t + p.max, 0);
@@ -345,24 +416,32 @@
                     return <div key={i} className={`p-2 ${active ? 'bg-blue-50 border-l-4 border-blue-500' : 'border-b border-gray-100'}`}><span>{s.emoji}</span> <strong style={{ color: s.color }}>{s.range}</strong> — {s.desc}</div>;
                   })}
                 </div>
+                
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-amber-800 text-xs text-center">
+                    ⚠️ <strong>Warm-Up:</strong> 5-10 mins before exercise | <strong>Hydrate:</strong> 150ml/15 mins
+                  </p>
+                </div>
               </div>
             </div>
             
-            <button onClick={onRestart} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3 rounded-xl">Take Again</button>
-            <p className="text-center text-blue-200 text-xs mt-3">Results saved. Thank you!</p>
+            <p className="text-center text-blue-200 text-xs">✅ Your results have been saved. Thank you for participating!</p>
           </div>
         </div>
       );
     };
 
+    // Main App
     function App() {
       const [screen, setScreen] = useState('welcome');
       const [userInfo, setUserInfo] = useState(null);
       const [results, setResults] = useState(null);
+      const [completedEmail, setCompletedEmail] = useState(null);
       
-      if (screen === 'welcome') return <WelcomeScreen onStart={(info) => { setUserInfo(info); setScreen('quiz'); }} />;
+      if (screen === 'completed') return <AlreadyCompletedScreen email={completedEmail} />;
+      if (screen === 'welcome') return <WelcomeScreen onStart={(info) => { setUserInfo(info); setScreen('quiz'); }} onAlreadyCompleted={(email) => { setCompletedEmail(email); setScreen('completed'); }} />;
       if (screen === 'quiz') return <QuizScreen userInfo={userInfo} onComplete={(score, answers) => { setResults({ score, answers }); setScreen('results'); }} />;
-      if (screen === 'results') return <ResultsScreen score={results.score} answers={results.answers} userInfo={userInfo} onRestart={() => { setUserInfo(null); setResults(null); setScreen('welcome'); }} />;
+      if (screen === 'results') return <ResultsScreen score={results.score} answers={results.answers} userInfo={userInfo} />;
       return null;
     }
 
